@@ -1,16 +1,19 @@
-import { ConsultStatus } from "@/constants";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
 import { Consult } from "@/types/consult.type";
 
-type Payload = {};
+type Payload = {
+  id: string;
+};
 
 type Response = Consult;
 
-export const useCreateConsult = () => {
+export const useLongPollConsultResult = () => {
   return useMutation<Response, Error, Payload>({
-    mutationFn: async (data) => {
-      const response = await api.post<Response>("/consults", data);
+    mutationFn: async ({ id }) => {
+      const response = await api.get<Response>(`/consults/${id}/result`, {
+        timeout: 30000,
+      });
       return response.data;
     },
   });
