@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button, TextField, TextareaAutosize } from "@mui/material";
+import { Button, TextField } from "@mui/material";
 
 import { ConsultStatus } from "@/constants";
 import { Consult } from "@/types/consult.type";
@@ -11,23 +11,30 @@ import { useUpdateConsult } from "@/hooks/useUpdateConsult";
 import { AudioRecorder } from "@/components/audioRecorder";
 import { useCreateRecording } from "@/hooks/useCreateRecording";
 import { useLongPollConsultResult } from "@/hooks/useLongPollConsultResult";
+import { useRouter } from "next/navigation";
 
 type Props = {
   params: { consultId: string };
 };
 export const Dashboard = ({ params }: Props) => {
+  const router = useRouter();
   const { mutate: updateConsult } = useUpdateConsult();
   const { mutate: createRecording } = useCreateRecording();
-  const { mutate: longPollConsultResult } = useLongPollConsultResult();
+  const { mutate: longPollConsultResult, isPending } =
+    useLongPollConsultResult();
   const [currentConsult, setCurrentConsult] = useState<Consult>();
   const [notes, setNotes] = useState<string>("");
   const sequenceRef = useRef(0);
 
-  const { data: consult, isLoading } = useGetConsult(params.consultId);
+  const { data: consult, isLoading, error } = useGetConsult(params.consultId);
 
   useEffect(() => {
     setCurrentConsult(consult);
   }, [consult]);
+
+  if (error) {
+    router.push("/");
+  }
 
   if (isLoading || !currentConsult) {
     return <div>Loading...</div>;
@@ -43,6 +50,13 @@ export const Dashboard = ({ params }: Props) => {
         </Link>
         {!currentConsult?.result && (
           <AudioRecorder
+            onSendAudioChunk={(audioBlob) => {
+              createRecording({
+                consultId: currentConsult.id,
+                sequence: sequenceRef.current++,
+                audio: audioBlob,
+              });
+            }}
             onRecordingStart={() => {
               updateConsult({
                 id: currentConsult.id,
@@ -85,6 +99,7 @@ export const Dashboard = ({ params }: Props) => {
           onChange={(e) => setNotes(e.target.value)}
         />
       </div>
+
       {/* Show Result */}
       {currentConsult?.result && (
         <TextField
@@ -94,6 +109,12 @@ export const Dashboard = ({ params }: Props) => {
           label="Generated Consultation Note"
           value={currentConsult.result}
         />
+      )}
+
+      {isPending && (
+        <div className="absolute w-[95vw] h-[95vh] bg-gray-700 opacity-50 text-center flex justify-center items-center">
+          <p className=" text-black text-9xl">Waiting for result...</p>
+        </div>
       )}
     </div>
   );
