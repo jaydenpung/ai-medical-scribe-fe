@@ -5,17 +5,33 @@ import { Consult } from "@/types/consult.type";
 
 type Payload = {
   consultId: string;
-  status: ConsultStatus;
+  audio: Blob;
+  notes?: string;
 };
 
 type Response = {};
 
 export const useCreateRecording = () => {
-  return useMutation<Response, Error, Payload>({
-    mutationFn: async ({ consultId, ...data }) => {
-      const response = await api.post<Response>(
+  return useMutation({
+    mutationFn: async ({ consultId, audio, notes }: Payload) => {
+      const formData = new FormData();
+      console.log("Audio blob:", audio);
+      const audioFile = new File([audio], "recording.webm", {
+        type: "audio/webm",
+      });
+      formData.append("audio", audioFile);
+      if (notes) {
+        formData.append("notes", notes);
+      }
+
+      const response = await api.post(
         `/consults/${consultId}/recordings`,
-        data
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
       return response.data;
     },

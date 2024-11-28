@@ -9,45 +9,27 @@ import { Consult } from "@/types/consult.type";
 import { useGetConsult } from "@/hooks/useGetConsult";
 import Link from "next/link";
 import { useUpdateConsult } from "@/hooks/useUpdateConsult";
+import { AudioRecorder } from "@/components/audioRecorder";
+import { useCreateRecording } from "@/hooks/useCreateRecording";
+import { useLongPollConsultResult } from "@/hooks/useLongPollConsultResult";
 
 type Props = {
   params: { consultId: string };
 };
 export const Dashboard = ({ params }: Props) => {
   const { mutate: updateConsult } = useUpdateConsult();
+  const { mutate: createRecording } = useCreateRecording();
+  const { mutate: longPollConsultResult } = useLongPollConsultResult();
   const [currentConsult, setCurrentConsult] = useState<Consult>();
   const [notes, setNotes] = useState<string>("");
 
   const { data: consult, isLoading } = useGetConsult(params.consultId);
 
-  const handleRecordPressed = () => {
-    if (!currentConsult) {
-      return;
-    }
-
-    const isCurrentlyRecording =
-      currentConsult.status === ConsultStatus.RECORDING_STARTED;
-
-    if (isCurrentlyRecording) {
-      // recording stopping
-    } else {
-      // recording starting
-      updateConsult(
-        { id: currentConsult.id, status: ConsultStatus.RECORDING_STARTED },
-        {
-          onSuccess: (data) => {
-            setCurrentConsult(data);
-          },
-        }
-      );
-    }
-  };
-
   useEffect(() => {
     setCurrentConsult(consult);
   }, [consult]);
 
-  if (isLoading) {
+  if (isLoading || !currentConsult) {
     return <div>Loading...</div>;
   }
 
@@ -59,12 +41,38 @@ export const Dashboard = ({ params }: Props) => {
         <Link href="/">
           <Button variant="outlined">Back</Button>
         </Link>
-        <Button variant="outlined" onClick={handleRecordPressed}>
-          {currentConsult?.status === ConsultStatus.RECORDING_STARTED
-            ? "Stop"
-            : "Record"}
-        </Button>
+        {!currentConsult?.result && (
+          <AudioRecorder
+            onRecordingStart={() => {
+              updateConsult({
+                id: currentConsult.id,
+                status: ConsultStatus.RECORDING_STARTED,
+              });
+            }}
+            onRecordingStop={(audioBlob) => {
+              updateConsult({
+                id: currentConsult.id,
+                status: ConsultStatus.RECORDING_FINISHED,
+              });
+              createRecording({
+                consultId: currentConsult.id,
+                audio: audioBlob,
+                notes,
+              });
+
+              longPollConsultResult(
+                { id: currentConsult.id },
+                {
+                  onSuccess: (data) => {
+                    setCurrentConsult(data);
+                  },
+                }
+              );
+            }}
+          />
+        )}
       </div>
+
       {/* Allow custom notes */}
       <div>
         <TextField
@@ -83,8 +91,7 @@ export const Dashboard = ({ params }: Props) => {
           minRows={20}
           className="w-[100%]"
           label="Generated Consultation Note"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          value={currentConsult.result}
         />
       )}
     </div>
