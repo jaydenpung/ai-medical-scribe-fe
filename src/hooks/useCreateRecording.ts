@@ -5,6 +5,7 @@ import { Consult } from "@/types/consult.type";
 
 type Payload = {
   consultId: string;
+  sequence: number;
   audio: Blob;
   notes?: string;
 };
@@ -13,13 +14,14 @@ type Response = {};
 
 export const useCreateRecording = () => {
   return useMutation({
-    mutationFn: async ({ consultId, audio, notes }: Payload) => {
+    mutationFn: async ({ consultId, audio, notes, sequence }: Payload) => {
       const formData = new FormData();
       console.log("Audio blob:", audio);
       const audioFile = new File([audio], "recording.webm", {
         type: "audio/webm",
       });
       formData.append("audio", audioFile);
+      formData.append("sequence", sequence.toString());
       if (notes) {
         formData.append("notes", notes);
       }

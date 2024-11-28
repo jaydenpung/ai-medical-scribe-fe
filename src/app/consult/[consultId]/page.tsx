@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, TextField, TextareaAutosize } from "@mui/material";
 
 import { ConsultStatus } from "@/constants";
-import { useCreateConsult } from "@/hooks/useCreateConsult";
 import { Consult } from "@/types/consult.type";
 import { useGetConsult } from "@/hooks/useGetConsult";
 import Link from "next/link";
@@ -22,6 +21,7 @@ export const Dashboard = ({ params }: Props) => {
   const { mutate: longPollConsultResult } = useLongPollConsultResult();
   const [currentConsult, setCurrentConsult] = useState<Consult>();
   const [notes, setNotes] = useState<string>("");
+  const sequenceRef = useRef(0);
 
   const { data: consult, isLoading } = useGetConsult(params.consultId);
 
@@ -56,6 +56,7 @@ export const Dashboard = ({ params }: Props) => {
               });
               createRecording({
                 consultId: currentConsult.id,
+                sequence: sequenceRef.current++,
                 audio: audioBlob,
                 notes,
               });
